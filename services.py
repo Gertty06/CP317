@@ -43,3 +43,50 @@ def get_product_details(product_id):
     product["availability_status"] = "In Stock" if product["in_stock"] else "Out of Stock"
     
     return product
+
+
+def add_to_cart(cart_id):
+    """UI-3: Prompt for product and quantity, then insert/update cart."""
+    print("\n--- Add Item to Cart ---")
+    pid_input = input("Enter Product ID: ").strip()
+    if not pid_input.isdigit():
+        print("[-] Invalid Product ID. Must be an integer.")
+        return
+
+    product_id = int(pid_input)
+
+    qty_input = input("Enter Quantity (default 1): ").strip()
+    if not qty_input:
+        quantity = 1
+    elif qty_input.isdigit() and int(qty_input) > 0:
+        quantity = int(qty_input)
+    else:
+        print("[-] Quantity must be a positive integer.")
+        return
+
+    try:
+
+        db.add_to_cart(cart_id, product_id, quantity)
+
+        print(f"[+] Successfully added {quantity} unit(s) of Product #{product_id} to Cart #{cart_id}.")
+    except Exception as e:
+        print(f"[-] Could not add product: {e}")
+    return
+
+def display_total(cart_id):
+    """UI-3: Query cart summary and display formatted currency values."""
+    print(f"\n--- Cart #{cart_id} Summary ---")
+    try:
+
+        totals = db.get_cart_total(cart_id)
+
+        subtotal = totals["subtotal_cents"] / 100
+        tax = totals["tax_cents"] / 100
+        total = totals["total_cents"] / 100
+
+        print(f"  Subtotal: ${subtotal:,.2f}")
+        print(f"  HST (13%): ${tax:,.2f}")
+        print(f"  Total:    ${total:,.2f}")
+    except Exception as e:
+        print(f"[-] Failed to fetch cart total: {e}")
+    return
