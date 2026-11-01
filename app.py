@@ -1,6 +1,7 @@
 import services
 import db
 from pathlib import Path
+DEFAULT_CART_ID = 1 
 
 def initialize_database_if_needed():
     """Helper to ensure the SQLite database is created and seeded if missing."""
@@ -25,9 +26,11 @@ def main():
         print("1. Browse & Filter Products (FR-1)")
         print("2. Find Parts by Vehicle (FR-1)")
         print("3. View Product Details (FR-2)")
-        print("4. Exit")
+        print("4. Add to cart (FR-3)")
+        print("5. View current total (FR-3)")
+        print("6. Exit")
         
-        choice = input("\nSelect an option (1-4): ").strip()
+        choice = input("\nSelect an option (1-6): ").strip()
         
         if choice == "1":
             print("\n--- Browse & Filter Products ---")
@@ -81,12 +84,19 @@ def main():
                     print("[-] Product not found or inactive.")
             else:
                 print("[-] Invalid ID.")
-                
         elif choice == "4":
+            services.add_to_cart(DEFAULT_CART_ID)
+
+            break
+
+        elif choice == "5":
+            services.display_total(DEFAULT_CART_ID)      
+            
+        elif choice == "6":
             print("Exiting. Goodbye!")
             break
         else:
-            print("[-] Invalid selection. Choose 1-4.")
+            print("[-] Invalid selection. Choose 1-6.")
 
 if __name__ == "__main__":
     main()
