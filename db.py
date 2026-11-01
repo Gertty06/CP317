@@ -65,21 +65,47 @@ def get_product(product_id):
 
 def add_to_cart(cart_id, product_id, quantity=1):
     """UI-3: add item, or increase quantity if already in the cart."""
-    with get_connection() as conn:   # 'with' commits the change
+    if quantity <= 0:
+        raise ValueError("Quantity must be at least 1.")
+
+    with get_connection() as conn:
+        product = conn.execute(
+            """
+            SELECT stock
+            FROM products
+            WHERE is_active = 1 AND product_id = ?""",
+            (product_id,)
+        ).fetchone()
+
+        if product is None:
+            raise ValueError(f"Product {product_id} is unavailable or does not exist!")
+
+        current_qty = conn.execute("SELECT quantity FROM cart_items WHERE cart_id = ? AND product_id = ?", (cart_id, product_id)).fetchone()
+        if (current_qty['quantity'] if current_qty else 0) + quantity > product['stock']:
+            raise ValueError("Insufficient stock available.")
+
+    
         conn.execute(
-            "INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?, ?, ?) "
-            "ON CONFLICT(cart_id, product_id) "
-            "DO UPDATE SET quantity = quantity + excluded.quantity",
+            """
+            INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?, ?, ?) 
+            ON CONFLICT(cart_id, product_id) 
+            DO UPDATE SET quantity = quantity + excluded.quantity""",
             (cart_id, product_id, quantity))
 
 
 def get_cart_total(cart_id):
     """UI-3: subtotal and tax in cents."""
+    sql = """
+        SELECT COALESCE(SUM(p.price_cents * ci.quantity), 0) AS subtotal
+        FROM cart_items ci
+        JOIN products p ON p.product_id = ci.product_id
+        WHERE ci.cart_id = ? AND p.is_active = 1
+    """
     with get_connection() as conn:
-        row = conn.execute(
-            "SELECT COALESCE(SUM(p.price_cents * ci.quantity), 0) AS subtotal "
-            "FROM cart_items ci JOIN products p ON p.product_id = ci.product_id "
-            "WHERE ci.cart_id = ?", (cart_id,)).fetchone()
+        row = conn.execute(sql, (cart_id,)).fetchone()
+    subtotal = int(row["subtotal"])
+    tax = round(subtotal * TAX_RATE)
+    return {"subtotal_cents": subtotal, "tax_cents": tax, "total_cents": subtotal + tax}
     subtotal = row["subtotal"]
     tax = round(subtotal * TAX_RATE)
     return {"subtotal_cents": subtotal, "tax_cents": tax, "total_cents": subtotal + tax}
